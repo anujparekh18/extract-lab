@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "prompt-version",
+      "name": "extract-lab",
       "dependencies": {
         "@ai-sdk/google": "^3.0.13",
         "@radix-ui/react-select": "^2.2.6",

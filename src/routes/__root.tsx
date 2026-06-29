@@ -15,10 +15,10 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Prompt Version Workbench" },
+      { title: "Extract Lab" },
       {
         name: "description",
-        content: "Document and text extraction workbench for schema and prompt iteration.",
+        content: "An open-source workbench for building, testing, and comparing structured document extraction workflows using LLMs.",
       },
     ],
     links: [{ rel: "stylesheet", href: appCss }],

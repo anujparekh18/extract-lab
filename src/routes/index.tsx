@@ -68,9 +68,9 @@ function DocTypeHubPage() {
     <main className="mx-auto max-w-300 px-4 py-6 md:px-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Prompt Version Workbench</h1>
+          <h1 className="text-2xl font-semibold">Extract Lab</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Choose a doc type, then open its focused workspace for documents, prompts, runs, and compare.
+            Build, test, and compare structured document extraction workflows using LLMs.
           </p>
         </div>
         <div className="badge bg-teal-50 text-teal-800">Doc Type Hub</div>

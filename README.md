@@ -1,6 +1,6 @@
-# Prompt Version Workbench
+# Extract Lab
 
-Private document/text extraction workbench for prompt/schema/model iteration.
+An open-source workbench for building, testing, and comparing structured document extraction workflows using LLMs.
 
 ## Stack
 
