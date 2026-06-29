@@ -4,6 +4,14 @@ import { api } from "./_generated/api";
 import { hasSchemaVersion } from "../src/extraction/schema-registry";
 import { GOOGLE_PROVIDER, isSupportedGoogleModel } from "../src/extraction/models";
 
+function getDeleteState(status: "queued" | "running" | "success" | "failed") {
+  const inProgress = status === "queued" || status === "running";
+  return {
+    canDelete: !inProgress,
+    deletionDisabledReason: inProgress ? "Wait for this run to finish before deleting." : null,
+  };
+}
+
 export const listByDocument = query({
   args: {
     documentId: v.id("documents"),
@@ -51,6 +59,7 @@ export const listByDocumentPage = query({
         return {
           ...run,
           promptName: prompt?.name ?? "Prompt deleted",
+          ...getDeleteState(run.status),
         };
       }),
     );

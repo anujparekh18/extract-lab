@@ -11,7 +11,13 @@ export const listByDocType = query({
       .withIndex("by_doc_type", (q) => q.eq("docTypeKey", args.docTypeKey))
       .collect();
 
-    return prompts.sort((a, b) => b.updatedAt - a.updatedAt);
+    return prompts
+      .map((prompt) => ({
+        ...prompt,
+        canDelete: true,
+        deletionDisabledReason: null,
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
   },
 });
 

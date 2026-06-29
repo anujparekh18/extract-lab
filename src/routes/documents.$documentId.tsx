@@ -21,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  EmptyState,
+  HelperCallout,
+  NoticeBanner,
+  TooltipHint,
+} from "@/components/ui/feedback";
 
 export const Route = createFileRoute("/documents/$documentId")({
   component: DocumentDetailPage,
@@ -150,13 +156,13 @@ function DocumentDetailPage() {
     : !docType
       ? "Doc type not found."
       : !isSchemaSupported
-        ? `Run disabled: '${document.docTypeKey}' has no schema support in code registry.`
+        ? "Add schema support for this Doc Type before creating Runs."
         : !selectedPromptId
-          ? "Select a prompt."
+          ? "Create or select a Prompt before creating a Run."
           : !selectedSchemaVersion
-            ? "Select a schema version."
+            ? "Select a Schema Version before creating a Run."
             : hasGlobalRunInProgress
-              ? "An extraction is already in progress. Only one extraction can run at a time."
+              ? "A Run is already in progress. Wait for it to finish before starting another."
               : "";
 
   const selectedRun = runsForPage.find((run: any) => run._id === selectedRunId) ?? null;
@@ -221,7 +227,7 @@ function DocumentDetailPage() {
         <div className="panel p-6">
           <h1 className="text-lg font-semibold">Document not found</h1>
           <Link to="/" className="btn btn-primary mt-4">
-            Back To Hub
+            Back to Hub
           </Link>
         </div>
       </main>
@@ -283,23 +289,13 @@ function DocumentDetailPage() {
         <p className="mt-1 text-xs text-gray-600">{formatDocumentMeta(document)}</p>
       </header>
 
-      {notice ? (
-        <div
-          className={`mb-4 rounded-md border px-3 py-2 text-sm ${
-            notice.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-red-200 bg-red-50 text-red-900"
-          }`}
-        >
-          {notice.text}
-        </div>
-      ) : null}
+      <NoticeBanner notice={notice} />
 
       {(inProgressRuns?.length ?? 0) > 0 ? (
-        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <div className="font-medium">Global extraction in progress.</div>
+        <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+          <div className="font-medium text-gray-900">Run in progress</div>
           <div className="mt-1 text-xs">
-            {`${inProgressRuns?.[0]?.documentFileName ?? "Unknown document"} (${inProgressRuns?.[0]?.status ?? "running"})`}
+            {`${inProgressRuns?.[0]?.documentFileName ?? "Unknown Document"} (${inProgressRuns?.[0]?.status ?? "running"})`}
           </div>
         </div>
       ) : null}
@@ -351,7 +347,17 @@ function DocumentDetailPage() {
 
         <section className="panel p-4">
           <h2 className="text-base font-semibold">Run Extraction</h2>
-          <p className="mt-1 text-xs text-gray-600">One prompt per run. Global extraction lock is enabled.</p>
+          <p className="mt-1 text-xs text-gray-600">
+            Each Run uses this Document plus one Prompt, Schema Version, and Model. Only one Run can execute at a time.
+          </p>
+
+          {!isSchemaSupported ? (
+            <HelperCallout title="Schema Version not available" className="mt-3">
+              <p className="text-xs text-gray-600">
+                Add <code>{document.docTypeKey}</code> to <code>src/extraction/schema-registry.ts</code> before running extraction.
+              </p>
+            </HelperCallout>
+          ) : null}
 
           <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
             <div>
@@ -361,10 +367,10 @@ function DocumentDetailPage() {
                 onValueChange={(value) => setSelectedPromptId(value === EMPTY_OPTION ? "" : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select prompt" />
+                  <SelectValue placeholder="Select Prompt" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={EMPTY_OPTION}>Select prompt</SelectItem>
+                  <SelectItem value={EMPTY_OPTION}>Select Prompt</SelectItem>
                   {(prompts ?? []).map((prompt: any) => (
                     <SelectItem key={prompt._id} value={prompt._id}>
                       {prompt.name}
@@ -381,10 +387,10 @@ function DocumentDetailPage() {
                 onValueChange={(value) => setSelectedSchemaVersion(value === EMPTY_OPTION ? "" : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select schema version" />
+                  <SelectValue placeholder="Select Schema Version" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={EMPTY_OPTION}>Select schema version</SelectItem>
+                  <SelectItem value={EMPTY_OPTION}>Select Schema Version</SelectItem>
                   {availableSchemaVersions.map((version: string) => (
                     <SelectItem key={version} value={version}>
                       {version}
@@ -413,13 +419,18 @@ function DocumentDetailPage() {
           </div>
 
           <div className="mt-3 flex items-center gap-3">
-            <button className="btn btn-primary" onClick={handleRun} disabled={Boolean(runDisabledReason)}>
+            <button
+              className="btn btn-primary"
+              onClick={handleRun}
+              disabled={Boolean(runDisabledReason)}
+              title={runDisabledReason || "Create Run"}
+            >
               Run Extraction
             </button>
-            <div className="text-xs text-gray-600">Provider: `{GOOGLE_PROVIDER}`</div>
+            <div className="text-xs text-gray-600">Provider: {GOOGLE_PROVIDER}</div>
           </div>
 
-          {runDisabledReason ? <p className="mt-2 text-sm text-amber-700">{runDisabledReason}</p> : null}
+          {runDisabledReason ? <p className="mt-2 text-xs text-gray-600">{runDisabledReason}</p> : null}
         </section>
 
         <section className="panel p-4">
@@ -455,34 +466,40 @@ function DocumentDetailPage() {
             </div>
           </div>
 
-          <div className="mt-3 rounded-lg border border-gray-200">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-left text-xs text-gray-600">
-                  <th className="px-2 py-2">Select</th>
-                  <th className="px-2 py-2">Time</th>
-                  <th className="px-2 py-2">Status</th>
-                  <th className="px-2 py-2">Prompt</th>
-                  <th className="px-2 py-2">Schema</th>
-                  <th className="px-2 py-2">Model</th>
-                  <th className="px-2 py-2">Total Tokens</th>
-                  <th className="px-2 py-2">Cost ({COST_CURRENCY_LABEL})</th>
-                  <th className="px-2 py-2">Latency</th>
-                  <th className="px-2 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {runsForPage.map((run: any) => {
-                  const isSelected = selectedRunId === run._id;
-                  const estimatedCostUsd = resolveRunCostUsd(run);
-                  const costBreakdown = buildCostBreakdown(run, estimatedCostUsd);
+          {runsForPage.length > 0 ? (
+            <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full min-w-[1040px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-left text-xs text-gray-600">
+                    <th className="px-2 py-2">Select</th>
+                    <th className="px-2 py-2">Time</th>
+                    <th className="px-2 py-2">Status</th>
+                    <th className="px-2 py-2">Prompt</th>
+                    <th className="px-2 py-2">Schema Version</th>
+                    <th className="px-2 py-2">Model</th>
+                    <th className="px-2 py-2">Tokens</th>
+                    <th className="px-2 py-2">Cost ({COST_CURRENCY_LABEL})</th>
+                    <th className="px-2 py-2">Latency</th>
+                    <th className="px-2 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {runsForPage.map((run: any) => {
+                    const isSelected = selectedRunId === run._id;
+                    const estimatedCostUsd = resolveRunCostUsd(run);
+                    const costBreakdown = buildCostBreakdown(run, estimatedCostUsd);
+                    const canDeleteRun =
+                      run.canDelete ?? (run.status !== "queued" && run.status !== "running");
+                    const runDeleteDisabledReason =
+                      run.deletionDisabledReason ??
+                      (canDeleteRun ? "" : "Wait for this run to finish before deleting.");
 
-                  return (
-                    <tr
-                      key={run._id}
-                      className={`cursor-pointer border-b align-top ${isSelected ? "bg-teal-50/40" : ""}`}
-                      onClick={() => setSelectedRunId((prev) => (prev === run._id ? "" : run._id))}
-                    >
+                    return (
+                      <tr
+                        key={run._id}
+                        className={`cursor-pointer border-b align-top ${isSelected ? "bg-teal-50/40" : ""}`}
+                        onClick={() => setSelectedRunId((prev) => (prev === run._id ? "" : run._id))}
+                      >
                       <td className="px-2 py-2">
                         <span
                           className={`inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] font-semibold ${
@@ -503,11 +520,11 @@ function DocumentDetailPage() {
                                 : "bg-amber-50 text-amber-800"
                           }`}
                         >
-                          {run.status}
+                          {formatRunStatus(run.status)}
                         </span>
                       </td>
                       <td className="px-2 py-2 text-xs">
-                        <div className="max-w-55 truncate" title={run.promptName ?? "Unknown prompt"}>
+                        <div className="max-w-55 truncate" title={run.promptName ?? "Unknown Prompt"}>
                           {run.promptName ?? "-"}
                         </div>
                       </td>
@@ -525,12 +542,12 @@ function DocumentDetailPage() {
                             {costBreakdown ? (
                               <div className="invisible absolute left-0 top-full z-20 mt-1 w-85 rounded-md border border-gray-200 bg-white p-2 text-[11px] text-gray-700 shadow-lg group-hover:visible">
                                 <div>
-                                  input_token ({formatTokenCount(costBreakdown.inputTokens)}) * input_rate ($
+                                  Input tokens ({formatTokenCount(costBreakdown.inputTokens)}) * input rate ($
                                   {costBreakdown.inputRate}) = ${costBreakdown.inputCost.toFixed(6)} /
                                   ₹{costBreakdown.inputCostInr.toFixed(4)}
                                 </div>
                                 <div className="mt-1">
-                                  output_token ({formatTokenCount(costBreakdown.outputTokens)}) * output_rate ($
+                                  Output tokens ({formatTokenCount(costBreakdown.outputTokens)}) * output rate ($
                                   {costBreakdown.outputRate}) = $
                                   {costBreakdown.outputCost.toFixed(6)} / ₹{costBreakdown.outputCostInr.toFixed(4)}
                                 </div>
@@ -544,13 +561,12 @@ function DocumentDetailPage() {
                       </td>
                       <td className="px-2 py-2">{run.latencyMs ? `${run.latencyMs} ms` : "-"}</td>
                       <td className="px-2 py-2">
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
                           <button
                             className="btn btn-secondary"
                             type="button"
-                            title="Set this run as Compare A"
-                            onClick={(event) => {
-                              event.stopPropagation();
+                            title="Set this Run as Compare A"
+                            onClick={() => {
                               setComparisonA(run._id);
                             }}
                           >
@@ -559,9 +575,8 @@ function DocumentDetailPage() {
                           <button
                             className="btn btn-secondary"
                             type="button"
-                            title="Set this run as Compare B"
-                            onClick={(event) => {
-                              event.stopPropagation();
+                            title="Set this Run as Compare B"
+                            onClick={() => {
                               setComparisonB(run._id);
                             }}
                           >
@@ -570,12 +585,11 @@ function DocumentDetailPage() {
                           <button
                             className="btn btn-secondary"
                             type="button"
-                            title="Delete this run"
-                            disabled={run.status === "queued" || run.status === "running"}
-                            onClick={async (event) => {
-                              event.stopPropagation();
+                            title={canDeleteRun ? "Delete this Run" : runDeleteDisabledReason}
+                            disabled={!canDeleteRun}
+                            onClick={async () => {
                               const confirmed = window.confirm(
-                                "Delete this run? This action cannot be undone.",
+                                "Delete this Run? This action cannot be undone.",
                               );
                               if (!confirmed) return;
                               await withFeedback(async () => {
@@ -585,22 +599,26 @@ function DocumentDetailPage() {
                           >
                             Delete
                           </button>
+                          <TooltipHint reason={!canDeleteRun ? runDeleteDisabledReason : null} />
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
-
-                {runsForPage.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="px-2 py-5 text-sm text-gray-600">
-                      No runs on this page.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-3"
+              title="No Runs yet"
+              description={
+                runDisabledReason
+                  ? runDisabledReason
+                  : "Choose a Prompt, Schema Version, and Model above, then create your first Run."
+              }
+            />
+          )}
 
           <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
             <div>
@@ -649,15 +667,19 @@ function DocumentDetailPage() {
                 </div>
               ) : null}
             </div>
-          ) : (
-            <p className="mt-4 text-sm text-gray-600">Click a run row to check it and inspect output. Click again to uncheck.</p>
-          )}
+          ) : runsForPage.length > 0 ? (
+            <EmptyState
+              className="mt-4"
+              title="Select a Run to inspect output"
+              description="Click a Run row to view validated JSON, validation errors, tokens, cost, and latency."
+            />
+          ) : null}
         </section>
 
         <section className="panel p-4">
           <div>
             <h2 className="text-base font-semibold">Compare Runs</h2>
-            <p className="mt-1 text-xs text-gray-600">Select two runs (A and B) to compare side by side.</p>
+            <p className="mt-1 text-xs text-gray-600">Select two Runs (A and B) to compare side by side.</p>
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -674,7 +696,7 @@ function DocumentDetailPage() {
                   <SelectItem value={EMPTY_OPTION}>Select Run A</SelectItem>
                   {runsForPage.map((run: any) => (
                     <SelectItem key={run._id} value={run._id}>
-                      {formatDate(run.createdAt)} • {run.status}
+                      {formatDate(run.createdAt)} • {formatRunStatus(run.status)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -693,7 +715,7 @@ function DocumentDetailPage() {
                   <SelectItem value={EMPTY_OPTION}>Select Run B</SelectItem>
                   {runsForPage.map((run: any) => (
                     <SelectItem key={run._id} value={run._id}>
-                      {formatDate(run.createdAt)} • {run.status}
+                      {formatDate(run.createdAt)} • {formatRunStatus(run.status)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -762,7 +784,15 @@ function DocumentDetailPage() {
               </div>
             </div>
           ) : (
-            <p className="mt-5 text-sm text-gray-600">Select two runs (A and B) to compare.</p>
+            <EmptyState
+              className="mt-5"
+              title={runsForPage.length > 0 ? "Select two Runs to compare" : "No Runs to compare yet"}
+              description={
+                runsForPage.length > 0
+                  ? "Choose Run A and Run B from the selectors above, or use Set A and Set B in Run History."
+                  : "Create at least two Runs for this Document to compare outputs and Prompt snapshots."
+              }
+            />
           )}
         </section>
       </section>
@@ -847,4 +877,13 @@ function formatBytes(bytes: number) {
 function formatTokenCount(value: number | undefined) {
   if (value === undefined || value === null) return "-";
   return value.toLocaleString();
+}
+
+function formatRunStatus(status: string | undefined) {
+  if (!status) return "-";
+  if (status === "queued") return "Queued";
+  if (status === "running") return "Running";
+  if (status === "success") return "Success";
+  if (status === "failed") return "Failed";
+  return status;
 }

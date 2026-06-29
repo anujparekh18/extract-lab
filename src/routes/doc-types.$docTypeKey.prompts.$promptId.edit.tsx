@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { NoticeBanner } from "@/components/ui/feedback";
 
 export const Route = createFileRoute("/doc-types/$docTypeKey/prompts/$promptId/edit")({
   component: EditPromptPage,
@@ -51,7 +52,7 @@ function EditPromptPage() {
     } catch (error) {
       setNotice({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to update prompt.",
+        text: error instanceof Error ? error.message : "Failed to update Prompt.",
       });
     } finally {
       setSaving(false);
@@ -61,7 +62,7 @@ function EditPromptPage() {
   if (docType === undefined || prompt === undefined) {
     return (
       <main className="mx-auto max-w-[1000px] px-4 py-6 md:px-8">
-        <div className="panel p-6 text-sm text-gray-600">Loading prompt...</div>
+        <div className="panel p-6 text-sm text-gray-600">Loading Prompt...</div>
       </main>
     );
   }
@@ -71,9 +72,9 @@ function EditPromptPage() {
       <main className="mx-auto max-w-[1000px] px-4 py-6 md:px-8">
         <div className="panel p-6">
           <h1 className="text-lg font-semibold">Prompt not found</h1>
-          <p className="mt-2 text-sm text-gray-600">The prompt could not be loaded for this doc type.</p>
+          <p className="mt-2 text-sm text-gray-600">The Prompt could not be loaded for this Doc Type.</p>
           <Link to="/doc-types/$docTypeKey" params={{ docTypeKey }} search={{ tab: "prompts" }} className="btn btn-primary mt-4">
-            Back To Prompts
+            Back to Prompts
           </Link>
         </div>
       </main>
@@ -102,17 +103,7 @@ function EditPromptPage() {
         <h1 className="mt-1 text-2xl font-semibold">Edit Prompt</h1>
       </header>
 
-      {notice ? (
-        <div
-          className={`mb-4 rounded-md border px-3 py-2 text-sm ${
-            notice.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-red-200 bg-red-50 text-red-900"
-          }`}
-        >
-          {notice.text}
-        </div>
-      ) : null}
+      <NoticeBanner notice={notice} />
 
       <section className="panel p-4">
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -127,7 +118,7 @@ function EditPromptPage() {
               className="input min-h-[420px]"
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder="Write your prompt"
+              placeholder="Describe exactly what the Model should extract and how it should format the result."
             />
           </div>
 

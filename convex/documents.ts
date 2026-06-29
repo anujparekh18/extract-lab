@@ -33,6 +33,13 @@ function toDocumentListItem<T extends { textContent?: string; title?: string; fi
   };
 }
 
+function getDeleteState(runCount: number) {
+  return {
+    canDelete: runCount === 0,
+    deletionDisabledReason: runCount === 0 ? null : "Delete runs first.",
+  };
+}
+
 function normalizeMimeType(mimeType: string) {
   const normalized = mimeType.trim().toLowerCase();
   if (normalized === "image/jpg") return "image/jpeg";
@@ -180,6 +187,7 @@ export const list = query({
           runCount: runs.length,
           hasActiveRun: Boolean(activeRun),
           latestRun,
+          ...getDeleteState(runs.length),
         };
       }),
     );
@@ -254,6 +262,7 @@ export const listByDocTypePage = query({
         hasActiveRun: summary?.hasActiveRun ?? false,
         latestRunStatus: summary?.latestRunStatus ?? null,
         latestRunAt: summary?.latestRunAt ?? null,
+        ...getDeleteState(summary?.runCount ?? 0),
       };
     });
 

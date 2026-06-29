@@ -2,6 +2,12 @@ import { Link, Outlet, createFileRoute, useLocation } from "@tanstack/react-rout
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import {
+  EmptyState,
+  HelperCallout,
+  NoticeBanner,
+  TooltipHint,
+} from "@/components/ui/feedback";
 
 export const Route = createFileRoute("/doc-types/$docTypeKey")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -54,6 +60,11 @@ function DocTypePage() {
 
   const docsForPage = docsPageData?.items ?? [];
   const isPromptChildRoute = location.pathname.includes("/prompts/");
+  const showInvoiceQuickStart =
+    docType?.key === "invoice" &&
+    docType.documentCount === 0 &&
+    docType.promptCount === 0 &&
+    docType.runCount === 0;
 
   const filteredPrompts = useMemo(() => {
     const term = promptSearch.trim().toLowerCase();
@@ -157,7 +168,7 @@ function DocTypePage() {
   if (docType === undefined) {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-6 md:px-8">
-        <div className="panel p-6 text-sm text-gray-600">Loading doc type...</div>
+        <div className="panel p-6 text-sm text-gray-600">Loading Doc Type...</div>
       </main>
     );
   }
@@ -166,10 +177,10 @@ function DocTypePage() {
     return (
       <main className="mx-auto max-w-[1000px] px-4 py-8 md:px-8">
         <div className="panel p-6">
-          <h1 className="text-lg font-semibold">Doc type not found</h1>
-          <p className="mt-2 text-sm text-gray-600">The requested doc type does not exist or was deleted.</p>
+          <h1 className="text-lg font-semibold">Doc Type not found</h1>
+          <p className="mt-2 text-sm text-gray-600">The requested Doc Type does not exist or was deleted.</p>
           <Link to="/" className="btn btn-primary mt-4">
-            Back To Hub
+            Back to Hub
           </Link>
         </div>
       </main>
@@ -192,22 +203,12 @@ function DocTypePage() {
         </div>
         <h1 className="mt-1 text-2xl font-semibold">{docType.name}</h1>
         <p className="mt-1 text-xs text-gray-600">
-          {docType.documentCount} docs • {docType.promptCount} prompts • {docType.runCount} runs • Last activity {" "}
+          {docType.documentCount} Documents • {docType.promptCount} Prompts • {docType.runCount} Runs • Last activity{" "}
           {formatDate(docType.lastActivityAt)}
         </p>
       </header>
 
-      {notice ? (
-        <div
-          className={`mb-4 rounded-md border px-3 py-2 text-sm ${
-            notice.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-red-200 bg-red-50 text-red-900"
-          }`}
-        >
-          {notice.text}
-        </div>
-      ) : null}
+      <NoticeBanner notice={notice} />
 
       <section className="panel p-3">
         <div className="flex gap-2">
@@ -230,6 +231,37 @@ function DocTypePage() {
         </div>
       </section>
 
+      {!docType.isSchemaSupported ? (
+        <HelperCallout title="Schema Version not available" className="mt-4">
+          <p className="text-xs text-gray-600">
+            Runs are disabled until <code>src/extraction/schema-registry.ts</code> includes this Doc Type.
+            You can still add Documents and Prompts while schema support is being wired up.
+          </p>
+        </HelperCallout>
+      ) : null}
+
+      {showInvoiceQuickStart ? (
+        <HelperCallout title="Invoice quick start" className="mt-4">
+          <ol className="grid gap-2 text-xs text-gray-600 md:grid-cols-3">
+            <li>
+              <span className="font-medium text-gray-900">1. Add a Document</span>
+              <br />
+              Upload <code>examples/invoice/sample-invoice.jpg</code> or paste your own invoice text.
+            </li>
+            <li>
+              <span className="font-medium text-gray-900">2. Add a Prompt</span>
+              <br />
+              Create a Prompt using <code>examples/invoice/sample-prompt.md</code>.
+            </li>
+            <li>
+              <span className="font-medium text-gray-900">3. Run extraction</span>
+              <br />
+              Open the Document, choose a Prompt, Schema Version, and Model, then start a Run.
+            </li>
+          </ol>
+        </HelperCallout>
+      ) : null}
+
       {activeTab === "docs" ? (
         <section className="panel mt-4 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -237,9 +269,7 @@ function DocTypePage() {
             <div className="text-xs text-gray-500">{docsPageData?.total ?? 0} total</div>
           </div>
 
-          <p className="mt-1 text-xs text-gray-600">
-            Allowed: {(limits?.allowedMimeTypes ?? []).join(", ")} • Max {(limits?.maxFileSizeBytes ?? 0) / 1024 / 1024}MB
-          </p>
+          <p className="mt-1 text-xs text-gray-600">{formatDocumentLimits(limits)}</p>
 
           <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
             <div className="flex gap-2">
@@ -280,7 +310,7 @@ function DocTypePage() {
                     if (file) setUploadFile(file);
                   }}
                 >
-                  Drag and drop a file here, or choose manually.
+                  Drop a PDF or image here, or choose a file.
                 </div>
 
                 <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
@@ -295,7 +325,13 @@ function DocTypePage() {
                   </button>
                 </div>
 
-                <div className="mt-2 text-xs text-gray-600">{uploadFile ? `Selected: ${uploadFile.name}` : "No file selected"}</div>
+                <div className="mt-2 text-xs text-gray-600">
+                  {uploadFile
+                    ? `Selected: ${uploadFile.name}`
+                    : showInvoiceQuickStart
+                      ? "Try examples/invoice/sample-invoice.jpg for the sample flow."
+                      : "No file selected."}
+                </div>
               </>
             ) : (
               <div className="mt-3 space-y-2">
@@ -314,11 +350,11 @@ function DocTypePage() {
                     className="input min-h-[220px]"
                     value={textContent}
                     onChange={(event) => setTextContent(event.target.value)}
-                    placeholder="Paste the WhatsApp/user message or any raw text input here."
+                    placeholder="Paste raw Document text here."
                   />
                 </div>
                 <button className="btn btn-primary" onClick={handleCreateTextDocument} disabled={creatingText || !textContent.trim()}>
-                  {creatingText ? "Creating..." : "Create Text Document"}
+                  {creatingText ? "Creating..." : "Create Document"}
                 </button>
               </div>
             )}
@@ -327,65 +363,79 @@ function DocTypePage() {
           <div className="mt-4">
             <input
               className="input"
-              placeholder="Search documents"
+              placeholder="Search Documents"
               value={docSearch}
               onChange={(event) => setDocSearch(event.target.value)}
             />
           </div>
 
-          <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200">
-            <table className="w-full min-w-[760px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-left text-xs text-gray-600">
-                  <th className="px-2 py-2">Document</th>
-                  <th className="px-2 py-2">Status</th>
-                  <th className="px-2 py-2">Runs</th>
-                  <th className="px-2 py-2">Added</th>
-                  <th className="px-2 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {docsForPage.map((doc: any) => (
-                  <tr key={doc._id} className="border-b align-top">
-                    <td className="px-2 py-2">
-                      <div className="max-w-[280px] truncate font-medium">{doc.title ?? doc.fileName ?? "Untitled document"}</div>
-                      <div className="mt-0.5 text-xs text-gray-500">{formatDocumentMeta(doc)}</div>
-                    </td>
-                    <td className="px-2 py-2">{renderDocumentStatus(doc)}</td>
-                    <td className="px-2 py-2">{doc.runCount}</td>
-                    <td className="px-2 py-2 text-xs text-gray-600">{formatDate(doc.createdAt)}</td>
-                    <td className="px-2 py-2">
-                      <div className="flex gap-2">
-                        <Link to="/documents/$documentId" params={{ documentId: doc._id }} className="btn btn-primary">
-                          Open
-                        </Link>
-                        <button
-                          className="btn btn-secondary"
-                          type="button"
-                          disabled={doc.runCount > 0}
-                          onClick={async () => {
-                            await withFeedback(async () => {
-                              await deleteDocument({ id: doc._id });
-                            }, "Document deleted.");
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+          {docsForPage.length > 0 ? (
+            <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full min-w-[760px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-left text-xs text-gray-600">
+                    <th className="px-2 py-2">Document</th>
+                    <th className="px-2 py-2">Status</th>
+                    <th className="px-2 py-2">Runs</th>
+                    <th className="px-2 py-2">Added</th>
+                    <th className="px-2 py-2">Actions</th>
                   </tr>
-                ))}
+                </thead>
+                <tbody>
+                  {docsForPage.map((doc: any) => {
+                    const canDelete = doc.canDelete ?? doc.runCount === 0;
+                    const deleteDisabledReason =
+                      doc.deletionDisabledReason ?? (canDelete ? "" : "Delete Runs first.");
 
-                {docsForPage.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-2 py-5 text-sm text-gray-600">
-                      No documents found.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+                    return (
+                      <tr key={doc._id} className="border-b align-top">
+                        <td className="px-2 py-2">
+                          <div className="max-w-[280px] truncate font-medium">{doc.title ?? doc.fileName ?? "Untitled document"}</div>
+                          <div className="mt-0.5 text-xs text-gray-500">{formatDocumentMeta(doc)}</div>
+                        </td>
+                        <td className="px-2 py-2">{renderDocumentStatus(doc)}</td>
+                        <td className="px-2 py-2">{doc.runCount}</td>
+                        <td className="px-2 py-2 text-xs text-gray-600">{formatDate(doc.createdAt)}</td>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-2">
+                            <Link to="/documents/$documentId" params={{ documentId: doc._id }} className="btn btn-primary">
+                              Open
+                            </Link>
+                            <button
+                              className="btn btn-secondary"
+                              type="button"
+                              disabled={!canDelete}
+                              title={canDelete ? "Delete Document" : deleteDisabledReason}
+                              onClick={async () => {
+                                await withFeedback(async () => {
+                                  await deleteDocument({ id: doc._id });
+                                }, "Document deleted.");
+                              }}
+                            >
+                              Delete
+                            </button>
+                            <TooltipHint reason={!canDelete ? deleteDisabledReason : null} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState
+              className="mt-3"
+              title={docSearch.trim() ? "No Documents match your search" : "Add a Document to start testing"}
+              description={
+                docSearch.trim()
+                  ? "Clear the search to show all Documents for this Doc Type."
+                  : showInvoiceQuickStart
+                    ? "Upload examples/invoice/sample-invoice.jpg, or paste invoice text, then open the Document to run extraction."
+                    : "Upload a supported file or paste raw text above. Each Run starts from one Document."
+              }
+            />
+          )}
 
           <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
             <div>
@@ -428,58 +478,84 @@ function DocTypePage() {
           <div className="mt-3">
             <input
               className="input"
-              placeholder="Search prompts"
+              placeholder="Search Prompts"
               value={promptSearch}
               onChange={(event) => setPromptSearch(event.target.value)}
             />
           </div>
 
           <div className="mt-4 space-y-2">
-            {filteredPrompts.map((prompt: any) => (
-              <div key={prompt._id} className="rounded-lg border border-gray-200 bg-white p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{prompt.name}</div>
-                    <div className="mt-1 line-clamp-3 text-xs text-gray-600">{prompt.text}</div>
-                    <div className="mt-1 text-xs text-gray-500">Updated: {formatDate(prompt.updatedAt)}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link
-                      to="/doc-types/$docTypeKey/prompts/$promptId/view"
-                      params={{ docTypeKey, promptId: prompt._id }}
-                      search={{ tab: "prompts" }}
-                      className="btn btn-secondary"
-                    >
-                      View
-                    </Link>
-                    <Link
-                      to="/doc-types/$docTypeKey/prompts/$promptId/edit"
-                      params={{ docTypeKey, promptId: prompt._id }}
-                      search={{ tab: "prompts" }}
-                      className="btn btn-secondary"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      onClick={async () => {
-                        await withFeedback(async () => {
-                          await deletePrompt({ id: prompt._id });
-                        }, "Prompt deleted.");
-                      }}
-                    >
-                      Delete
-                    </button>
+            {filteredPrompts.map((prompt: any) => {
+              const canDelete = prompt.canDelete ?? true;
+              const deleteDisabledReason = prompt.deletionDisabledReason ?? "";
+
+              return (
+                <div key={prompt._id} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{prompt.name}</div>
+                      <div className="mt-1 line-clamp-3 text-xs text-gray-600">{prompt.text}</div>
+                      <div className="mt-1 text-xs text-gray-500">Updated: {formatDate(prompt.updatedAt)}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to="/doc-types/$docTypeKey/prompts/$promptId/view"
+                        params={{ docTypeKey, promptId: prompt._id }}
+                        search={{ tab: "prompts" }}
+                        className="btn btn-secondary"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        to="/doc-types/$docTypeKey/prompts/$promptId/edit"
+                        params={{ docTypeKey, promptId: prompt._id }}
+                        search={{ tab: "prompts" }}
+                        className="btn btn-secondary"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        className="btn btn-secondary"
+                        type="button"
+                        disabled={!canDelete}
+                        title={canDelete ? "Delete Prompt" : deleteDisabledReason}
+                        onClick={async () => {
+                          await withFeedback(async () => {
+                            await deletePrompt({ id: prompt._id });
+                          }, "Prompt deleted.");
+                        }}
+                      >
+                        Delete
+                      </button>
+                      <TooltipHint reason={!canDelete ? deleteDisabledReason : null} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {filteredPrompts.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-600">
-                No prompts found.
-              </div>
+              <EmptyState
+                title={promptSearch.trim() ? "No Prompts match your search" : "Create a Prompt"}
+                description={
+                  promptSearch.trim()
+                    ? "Clear the search to show all Prompts for this Doc Type."
+                    : showInvoiceQuickStart
+                      ? "Use examples/invoice/sample-prompt.md as the starting Prompt for the bundled Invoice example."
+                      : "A Prompt tells the Model what to extract. You need at least one Prompt before you can create a Run."
+                }
+              >
+                {!promptSearch.trim() ? (
+                  <Link
+                    to="/doc-types/$docTypeKey/prompts/new"
+                    params={{ docTypeKey }}
+                    search={{ tab: "prompts" }}
+                    className="btn btn-primary"
+                  >
+                    New Prompt
+                  </Link>
+                ) : null}
+              </EmptyState>
             ) : null}
           </div>
         </section>
@@ -489,10 +565,10 @@ function DocTypePage() {
 }
 
 function renderDocumentStatus(doc: any) {
-  if (doc.hasActiveRun) return <span className="badge bg-amber-50 text-amber-800">in progress</span>;
-  if (doc.latestRunStatus === "success") return <span className="badge bg-emerald-50 text-emerald-800">success</span>;
-  if (doc.latestRunStatus === "failed") return <span className="badge bg-red-50 text-red-800">failed</span>;
-  return <span className="badge">no runs</span>;
+  if (doc.hasActiveRun) return <span className="badge bg-amber-50 text-amber-800">In progress</span>;
+  if (doc.latestRunStatus === "success") return <span className="badge bg-emerald-50 text-emerald-800">Success</span>;
+  if (doc.latestRunStatus === "failed") return <span className="badge bg-red-50 text-red-800">Failed</span>;
+  return <span className="badge">No Runs</span>;
 }
 
 function formatDate(ts: number | undefined) {
@@ -504,6 +580,13 @@ function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatDocumentLimits(limits: any) {
+  if (!limits) return "Accepted files: PDF, JPEG, PNG, WebP.";
+
+  const maxMb = limits.maxFileSizeBytes / 1024 / 1024;
+  return `Accepted files: PDF, JPEG, PNG, WebP. Max ${maxMb}MB.`;
 }
 
 function formatDocumentMeta(doc: any) {

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { EmptyState, NoticeBanner, TooltipHint } from "@/components/ui/feedback";
 
 export const Route = createFileRoute("/")({
   component: DocTypeHubPage,
@@ -76,20 +77,13 @@ function DocTypeHubPage() {
         <div className="badge bg-teal-50 text-teal-800">Doc Type Hub</div>
       </header>
 
-      {notice ? (
-        <div
-          className={`mb-4 rounded-md border px-3 py-2 text-sm ${
-            notice.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-red-200 bg-red-50 text-red-900"
-          }`}
-        >
-          {notice.text}
-        </div>
-      ) : null}
+      <NoticeBanner notice={notice} />
 
       <section className="panel p-4">
         <h2 className="text-base font-semibold">Create Doc Type</h2>
+        <p className="mt-1 text-xs text-gray-600">
+          A Doc Type groups Documents, Prompts, Schema Versions, and Runs for one extraction workflow.
+        </p>
         <form onSubmit={handleCreateDocType} className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
           <input
             className="input"
@@ -129,6 +123,10 @@ function DocTypeHubPage() {
             const isExpanded = Boolean(expanded[docType._id]);
             const hasLinks =
               docType.documentCount > 0 || docType.promptCount > 0 || docType.runCount > 0;
+            const canDelete = docType.canDelete ?? !hasLinks;
+            const deleteDisabledReason =
+              docType.deletionDisabledReason ??
+              (hasLinks ? "Delete linked Documents, Prompts, and Runs first." : "");
 
             return (
               <div key={docType._id} className="rounded-lg border border-gray-200 bg-white p-3">
@@ -150,14 +148,14 @@ function DocTypeHubPage() {
                         className={`badge ${
                           docType.isSchemaSupported
                             ? "bg-emerald-50 text-emerald-800"
-                            : "bg-amber-50 text-amber-800"
+                            : "bg-gray-50 text-gray-700"
                         }`}
                       >
-                        {docType.isSchemaSupported ? "Schema Ready" : "Schema Missing"}
+                        {docType.isSchemaSupported ? "Schema ready" : "No schema yet"}
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-gray-600">
-                      {docType.documentCount} docs • {docType.promptCount} prompts • {docType.runCount} runs
+                      {docType.documentCount} Documents • {docType.promptCount} Prompts • {docType.runCount} Runs
                     </div>
                     <div className="mt-1 text-xs text-gray-500">
                       Last activity: {formatDate(docType.lastActivityAt)}
@@ -192,18 +190,18 @@ function DocTypeHubPage() {
                   <div className="mt-3 space-y-3 rounded-md border border-gray-200 bg-gray-50 p-3">
                     <div className="text-xs text-gray-600">
                       {docType.isSchemaSupported
-                        ? `Schema versions: ${docType.schemaVersions.join(", ")}`
-                        : "No schema support in code registry yet. Uploads and prompts still work."}
+                        ? `Schema Versions: ${docType.schemaVersions.join(", ")}`
+                        : "Runs are unavailable until this Doc Type is added to the schema registry. You can still add Documents and Prompts."}
                     </div>
                     <div className="text-xs text-gray-500">
                       Created: {formatDate(docType.createdAt)} • Updated: {formatDate(docType.updatedAt)}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         className="btn btn-secondary"
                         type="button"
                         onClick={async () => {
-                          const nextName = window.prompt("New doc type name", docType.name);
+                          const nextName = window.prompt("New Doc Type name", docType.name);
                           if (!nextName) return;
 
                           await withFeedback(async () => {
@@ -216,7 +214,8 @@ function DocTypeHubPage() {
                       <button
                         className="btn btn-secondary"
                         type="button"
-                        disabled={hasLinks}
+                        disabled={!canDelete}
+                        title={canDelete ? "Delete Doc Type" : deleteDisabledReason}
                         onClick={async () => {
                           await withFeedback(async () => {
                             await deleteDocType({ id: docType._id });
@@ -225,12 +224,8 @@ function DocTypeHubPage() {
                       >
                         Delete
                       </button>
+                      <TooltipHint reason={!canDelete ? deleteDisabledReason : null} />
                     </div>
-                    {hasLinks ? (
-                      <p className="text-xs text-amber-700">
-                        Delete disabled until this doc type has zero linked docs, prompts, and runs.
-                      </p>
-                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -238,9 +233,14 @@ function DocTypeHubPage() {
           })}
 
           {filteredDocTypes.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-600">
-              No doc types found.
-            </div>
+            <EmptyState
+              title={search.trim() ? "No Doc Types match your search" : "Create your first Doc Type"}
+              description={
+                search.trim()
+                  ? "Clear the search to see all Doc Types, or create a new one above."
+                  : "Start with Invoice if you want to try the bundled example workflow."
+              }
+            />
           ) : null}
         </div>
       </section>

@@ -14,6 +14,23 @@ function assertDocTypeKeyFormat(key: string) {
   return normalized;
 }
 
+function getDeleteState(counts: { documentCount: number; promptCount: number; runCount: number }) {
+  const blockers: string[] = [];
+  if (counts.documentCount > 0) blockers.push("Documents");
+  if (counts.promptCount > 0) blockers.push("Prompts");
+  if (counts.runCount > 0) blockers.push("Runs");
+  const blockerList =
+    blockers.length <= 2
+      ? blockers.join(" and ")
+      : `${blockers.slice(0, -1).join(", ")}, and ${blockers[blockers.length - 1]}`;
+
+  return {
+    canDelete: blockers.length === 0,
+    deletionDisabledReason:
+      blockers.length === 0 ? null : `Delete linked ${blockerList} first.`,
+  };
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -46,6 +63,11 @@ export const list = query({
           documentCount: docs.length,
           promptCount: prompts.length,
           runCount: runs.length,
+          ...getDeleteState({
+            documentCount: docs.length,
+            promptCount: prompts.length,
+            runCount: runs.length,
+          }),
         };
       }),
     );
@@ -102,6 +124,11 @@ export const listForHub = query({
         promptCount: promptCountByType.get(docType.key) ?? 0,
         runCount: runCountByType.get(docType.key) ?? 0,
         lastActivityAt,
+        ...getDeleteState({
+          documentCount: docCountByType.get(docType.key) ?? 0,
+          promptCount: promptCountByType.get(docType.key) ?? 0,
+          runCount: runCountByType.get(docType.key) ?? 0,
+        }),
       };
     });
 
@@ -155,6 +182,11 @@ export const getByKey = query({
       promptCount: prompts.length,
       runCount: runs.length,
       lastActivityAt,
+      ...getDeleteState({
+        documentCount: documents.length,
+        promptCount: prompts.length,
+        runCount: runs.length,
+      }),
     };
   },
 });

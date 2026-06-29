@@ -17,7 +17,7 @@ function ViewPromptPage() {
   if (docType === undefined || prompt === undefined) {
     return (
       <main className="mx-auto max-w-250 px-4 py-6 md:px-8">
-        <div className="panel p-6 text-sm text-gray-600">Loading prompt...</div>
+        <div className="panel p-6 text-sm text-gray-600">Loading Prompt...</div>
       </main>
     );
   }
@@ -27,14 +27,14 @@ function ViewPromptPage() {
       <main className="mx-auto max-w-250 px-4 py-6 md:px-8">
         <div className="panel p-6">
           <h1 className="text-lg font-semibold">Prompt not found</h1>
-          <p className="mt-2 text-sm text-gray-600">The prompt could not be loaded for this doc type.</p>
+          <p className="mt-2 text-sm text-gray-600">The Prompt could not be loaded for this Doc Type.</p>
           <Link
             to="/doc-types/$docTypeKey"
             params={{ docTypeKey }}
             search={{ tab: "prompts" }}
             className="btn btn-primary mt-4"
           >
-            Back To Prompts
+            Back to Prompts
           </Link>
         </div>
       </main>
@@ -89,7 +89,7 @@ function ViewPromptPage() {
             search={{ tab: "prompts" }}
             className="btn btn-secondary"
           >
-            Back To Prompts
+            Back to Prompts
           </Link>
         </div>
       </section>

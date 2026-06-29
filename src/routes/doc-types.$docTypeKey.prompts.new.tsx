@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { NoticeBanner } from "@/components/ui/feedback";
 
 export const Route = createFileRoute("/doc-types/$docTypeKey/prompts/new")({
   component: NewPromptPage,
@@ -44,7 +45,7 @@ function NewPromptPage() {
     } catch (error) {
       setNotice({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to create prompt.",
+        text: error instanceof Error ? error.message : "Failed to create Prompt.",
       });
     } finally {
       setSaving(false);
@@ -54,7 +55,7 @@ function NewPromptPage() {
   if (docType === undefined) {
     return (
       <main className="mx-auto max-w-[1000px] px-4 py-6 md:px-8">
-        <div className="panel p-6 text-sm text-gray-600">Loading doc type...</div>
+        <div className="panel p-6 text-sm text-gray-600">Loading Doc Type...</div>
       </main>
     );
   }
@@ -63,9 +64,9 @@ function NewPromptPage() {
     return (
       <main className="mx-auto max-w-[1000px] px-4 py-6 md:px-8">
         <div className="panel p-6">
-          <h1 className="text-lg font-semibold">Doc type not found</h1>
+          <h1 className="text-lg font-semibold">Doc Type not found</h1>
           <Link to="/" className="btn btn-primary mt-4">
-            Back To Hub
+            Back to Hub
           </Link>
         </div>
       </main>
@@ -94,23 +95,13 @@ function NewPromptPage() {
         <h1 className="mt-1 text-2xl font-semibold">New Prompt</h1>
       </header>
 
-      {notice ? (
-        <div
-          className={`mb-4 rounded-md border px-3 py-2 text-sm ${
-            notice.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-red-200 bg-red-50 text-red-900"
-          }`}
-        >
-          {notice.text}
-        </div>
-      ) : null}
+      <NoticeBanner notice={notice} />
 
       <section className="panel p-4">
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="mb-1 block text-xs text-gray-600">Prompt Name</label>
-            <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Prompt name" />
+            <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Invoice extraction v1" />
           </div>
 
           <div>
@@ -119,7 +110,7 @@ function NewPromptPage() {
               className="input min-h-[420px]"
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder="Write your prompt"
+              placeholder="Describe exactly what the Model should extract and how it should format the result."
             />
           </div>
 
