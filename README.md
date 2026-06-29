@@ -121,7 +121,14 @@ src/extraction/schemas/            # Zod extraction schemas
 src/routes/                        # TanStack Start routes and UI screens
 convex/                            # Convex backend, storage, and run logic
 examples/invoice/                  # Example invoice files and prompt
+.agents/                           # Optional agent skills for contributors
 ```
+
+## Agent Skills
+
+The `.agents/` directory contains optional Codex agent skills used while developing and reviewing Extract Lab. Contributors can use these skills for UI review, browser testing, and React implementation guidance when working in compatible agent tooling.
+
+These files are part of the repository, but they are not required to install, build, or use Extract Lab.
 
 ## Schemas
 
