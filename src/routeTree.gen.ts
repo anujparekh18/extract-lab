@@ -10,102 +10,145 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DocumentsDocumentIdRouteImport } from './routes/documents.$documentId'
-import { Route as DocTypesDocTypeKeyRouteImport } from './routes/doc-types.$docTypeKey'
-import { Route as DocTypesDocTypeKeyPromptsNewRouteImport } from './routes/doc-types.$docTypeKey.prompts.new'
-import { Route as DocTypesDocTypeKeyPromptsPromptIdViewRouteImport } from './routes/doc-types.$docTypeKey.prompts.$promptId.view'
-import { Route as DocTypesDocTypeKeyPromptsPromptIdEditRouteImport } from './routes/doc-types.$docTypeKey.prompts.$promptId.edit'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as XSlugRouteImport } from './routes/x.$slug'
+import { Route as XSlugIndexRouteImport } from './routes/x.$slug.index'
+import { Route as XSlugAnswersRouteImport } from './routes/x.$slug.answers'
+import { Route as XSlugRunsRouteImport } from './routes/x.$slug.runs'
+import { Route as XSlugShipRouteImport } from './routes/x.$slug.ship'
+import { Route as XSlugVersionsRouteImport } from './routes/x.$slug.versions'
+import { Route as XSlugAccuracyIndexRouteImport } from './routes/x.$slug.accuracy.index'
+import { Route as XSlugAccuracyCheckIdRouteImport } from './routes/x.$slug.accuracy.$checkId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
-  id: '/documents/$documentId',
-  path: '/documents/$documentId',
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocTypesDocTypeKeyRoute = DocTypesDocTypeKeyRouteImport.update({
-  id: '/doc-types/$docTypeKey',
-  path: '/doc-types/$docTypeKey',
+const XSlugRoute = XSlugRouteImport.update({
+  id: '/x/$slug',
+  path: '/x/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocTypesDocTypeKeyPromptsNewRoute =
-  DocTypesDocTypeKeyPromptsNewRouteImport.update({
-    id: '/prompts/new',
-    path: '/prompts/new',
-    getParentRoute: () => DocTypesDocTypeKeyRoute,
-  } as any)
-const DocTypesDocTypeKeyPromptsPromptIdViewRoute =
-  DocTypesDocTypeKeyPromptsPromptIdViewRouteImport.update({
-    id: '/prompts/$promptId/view',
-    path: '/prompts/$promptId/view',
-    getParentRoute: () => DocTypesDocTypeKeyRoute,
-  } as any)
-const DocTypesDocTypeKeyPromptsPromptIdEditRoute =
-  DocTypesDocTypeKeyPromptsPromptIdEditRouteImport.update({
-    id: '/prompts/$promptId/edit',
-    path: '/prompts/$promptId/edit',
-    getParentRoute: () => DocTypesDocTypeKeyRoute,
-  } as any)
+const XSlugIndexRoute = XSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => XSlugRoute,
+} as any)
+const XSlugAnswersRoute = XSlugAnswersRouteImport.update({
+  id: '/answers',
+  path: '/answers',
+  getParentRoute: () => XSlugRoute,
+} as any)
+const XSlugRunsRoute = XSlugRunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => XSlugRoute,
+} as any)
+const XSlugShipRoute = XSlugShipRouteImport.update({
+  id: '/ship',
+  path: '/ship',
+  getParentRoute: () => XSlugRoute,
+} as any)
+const XSlugVersionsRoute = XSlugVersionsRouteImport.update({
+  id: '/versions',
+  path: '/versions',
+  getParentRoute: () => XSlugRoute,
+} as any)
+const XSlugAccuracyIndexRoute = XSlugAccuracyIndexRouteImport.update({
+  id: '/accuracy/',
+  path: '/accuracy/',
+  getParentRoute: () => XSlugRoute,
+} as any)
+const XSlugAccuracyCheckIdRoute = XSlugAccuracyCheckIdRouteImport.update({
+  id: '/accuracy/$checkId',
+  path: '/accuracy/$checkId',
+  getParentRoute: () => XSlugRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/doc-types/$docTypeKey': typeof DocTypesDocTypeKeyRouteWithChildren
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
-  '/doc-types/$docTypeKey/prompts/new': typeof DocTypesDocTypeKeyPromptsNewRoute
-  '/doc-types/$docTypeKey/prompts/$promptId/edit': typeof DocTypesDocTypeKeyPromptsPromptIdEditRoute
-  '/doc-types/$docTypeKey/prompts/$promptId/view': typeof DocTypesDocTypeKeyPromptsPromptIdViewRoute
+  '/setup': typeof SetupRoute
+  '/x/$slug': typeof XSlugRouteWithChildren
+  '/x/$slug/answers': typeof XSlugAnswersRoute
+  '/x/$slug/runs': typeof XSlugRunsRoute
+  '/x/$slug/ship': typeof XSlugShipRoute
+  '/x/$slug/versions': typeof XSlugVersionsRoute
+  '/x/$slug/': typeof XSlugIndexRoute
+  '/x/$slug/accuracy/$checkId': typeof XSlugAccuracyCheckIdRoute
+  '/x/$slug/accuracy/': typeof XSlugAccuracyIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/doc-types/$docTypeKey': typeof DocTypesDocTypeKeyRouteWithChildren
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
-  '/doc-types/$docTypeKey/prompts/new': typeof DocTypesDocTypeKeyPromptsNewRoute
-  '/doc-types/$docTypeKey/prompts/$promptId/edit': typeof DocTypesDocTypeKeyPromptsPromptIdEditRoute
-  '/doc-types/$docTypeKey/prompts/$promptId/view': typeof DocTypesDocTypeKeyPromptsPromptIdViewRoute
+  '/setup': typeof SetupRoute
+  '/x/$slug/answers': typeof XSlugAnswersRoute
+  '/x/$slug/runs': typeof XSlugRunsRoute
+  '/x/$slug/ship': typeof XSlugShipRoute
+  '/x/$slug/versions': typeof XSlugVersionsRoute
+  '/x/$slug': typeof XSlugIndexRoute
+  '/x/$slug/accuracy/$checkId': typeof XSlugAccuracyCheckIdRoute
+  '/x/$slug/accuracy': typeof XSlugAccuracyIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/doc-types/$docTypeKey': typeof DocTypesDocTypeKeyRouteWithChildren
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
-  '/doc-types/$docTypeKey/prompts/new': typeof DocTypesDocTypeKeyPromptsNewRoute
-  '/doc-types/$docTypeKey/prompts/$promptId/edit': typeof DocTypesDocTypeKeyPromptsPromptIdEditRoute
-  '/doc-types/$docTypeKey/prompts/$promptId/view': typeof DocTypesDocTypeKeyPromptsPromptIdViewRoute
+  '/setup': typeof SetupRoute
+  '/x/$slug': typeof XSlugRouteWithChildren
+  '/x/$slug/answers': typeof XSlugAnswersRoute
+  '/x/$slug/runs': typeof XSlugRunsRoute
+  '/x/$slug/ship': typeof XSlugShipRoute
+  '/x/$slug/versions': typeof XSlugVersionsRoute
+  '/x/$slug/': typeof XSlugIndexRoute
+  '/x/$slug/accuracy/$checkId': typeof XSlugAccuracyCheckIdRoute
+  '/x/$slug/accuracy/': typeof XSlugAccuracyIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/doc-types/$docTypeKey'
-    | '/documents/$documentId'
-    | '/doc-types/$docTypeKey/prompts/new'
-    | '/doc-types/$docTypeKey/prompts/$promptId/edit'
-    | '/doc-types/$docTypeKey/prompts/$promptId/view'
+    | '/setup'
+    | '/x/$slug'
+    | '/x/$slug/answers'
+    | '/x/$slug/runs'
+    | '/x/$slug/ship'
+    | '/x/$slug/versions'
+    | '/x/$slug/'
+    | '/x/$slug/accuracy/$checkId'
+    | '/x/$slug/accuracy/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/doc-types/$docTypeKey'
-    | '/documents/$documentId'
-    | '/doc-types/$docTypeKey/prompts/new'
-    | '/doc-types/$docTypeKey/prompts/$promptId/edit'
-    | '/doc-types/$docTypeKey/prompts/$promptId/view'
+    | '/setup'
+    | '/x/$slug/answers'
+    | '/x/$slug/runs'
+    | '/x/$slug/ship'
+    | '/x/$slug/versions'
+    | '/x/$slug'
+    | '/x/$slug/accuracy/$checkId'
+    | '/x/$slug/accuracy'
   id:
     | '__root__'
     | '/'
-    | '/doc-types/$docTypeKey'
-    | '/documents/$documentId'
-    | '/doc-types/$docTypeKey/prompts/new'
-    | '/doc-types/$docTypeKey/prompts/$promptId/edit'
-    | '/doc-types/$docTypeKey/prompts/$promptId/view'
+    | '/setup'
+    | '/x/$slug'
+    | '/x/$slug/answers'
+    | '/x/$slug/runs'
+    | '/x/$slug/ship'
+    | '/x/$slug/versions'
+    | '/x/$slug/'
+    | '/x/$slug/accuracy/$checkId'
+    | '/x/$slug/accuracy/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DocTypesDocTypeKeyRoute: typeof DocTypesDocTypeKeyRouteWithChildren
-  DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
+  SetupRoute: typeof SetupRoute
+  XSlugRoute: typeof XSlugRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -117,65 +160,98 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/documents/$documentId': {
-      id: '/documents/$documentId'
-      path: '/documents/$documentId'
-      fullPath: '/documents/$documentId'
-      preLoaderRoute: typeof DocumentsDocumentIdRouteImport
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/doc-types/$docTypeKey': {
-      id: '/doc-types/$docTypeKey'
-      path: '/doc-types/$docTypeKey'
-      fullPath: '/doc-types/$docTypeKey'
-      preLoaderRoute: typeof DocTypesDocTypeKeyRouteImport
+    '/x/$slug': {
+      id: '/x/$slug'
+      path: '/x/$slug'
+      fullPath: '/x/$slug'
+      preLoaderRoute: typeof XSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/doc-types/$docTypeKey/prompts/new': {
-      id: '/doc-types/$docTypeKey/prompts/new'
-      path: '/prompts/new'
-      fullPath: '/doc-types/$docTypeKey/prompts/new'
-      preLoaderRoute: typeof DocTypesDocTypeKeyPromptsNewRouteImport
-      parentRoute: typeof DocTypesDocTypeKeyRoute
+    '/x/$slug/': {
+      id: '/x/$slug/'
+      path: '/'
+      fullPath: '/x/$slug/'
+      preLoaderRoute: typeof XSlugIndexRouteImport
+      parentRoute: typeof XSlugRoute
     }
-    '/doc-types/$docTypeKey/prompts/$promptId/view': {
-      id: '/doc-types/$docTypeKey/prompts/$promptId/view'
-      path: '/prompts/$promptId/view'
-      fullPath: '/doc-types/$docTypeKey/prompts/$promptId/view'
-      preLoaderRoute: typeof DocTypesDocTypeKeyPromptsPromptIdViewRouteImport
-      parentRoute: typeof DocTypesDocTypeKeyRoute
+    '/x/$slug/answers': {
+      id: '/x/$slug/answers'
+      path: '/answers'
+      fullPath: '/x/$slug/answers'
+      preLoaderRoute: typeof XSlugAnswersRouteImport
+      parentRoute: typeof XSlugRoute
     }
-    '/doc-types/$docTypeKey/prompts/$promptId/edit': {
-      id: '/doc-types/$docTypeKey/prompts/$promptId/edit'
-      path: '/prompts/$promptId/edit'
-      fullPath: '/doc-types/$docTypeKey/prompts/$promptId/edit'
-      preLoaderRoute: typeof DocTypesDocTypeKeyPromptsPromptIdEditRouteImport
-      parentRoute: typeof DocTypesDocTypeKeyRoute
+    '/x/$slug/runs': {
+      id: '/x/$slug/runs'
+      path: '/runs'
+      fullPath: '/x/$slug/runs'
+      preLoaderRoute: typeof XSlugRunsRouteImport
+      parentRoute: typeof XSlugRoute
+    }
+    '/x/$slug/ship': {
+      id: '/x/$slug/ship'
+      path: '/ship'
+      fullPath: '/x/$slug/ship'
+      preLoaderRoute: typeof XSlugShipRouteImport
+      parentRoute: typeof XSlugRoute
+    }
+    '/x/$slug/versions': {
+      id: '/x/$slug/versions'
+      path: '/versions'
+      fullPath: '/x/$slug/versions'
+      preLoaderRoute: typeof XSlugVersionsRouteImport
+      parentRoute: typeof XSlugRoute
+    }
+    '/x/$slug/accuracy/': {
+      id: '/x/$slug/accuracy/'
+      path: '/accuracy'
+      fullPath: '/x/$slug/accuracy/'
+      preLoaderRoute: typeof XSlugAccuracyIndexRouteImport
+      parentRoute: typeof XSlugRoute
+    }
+    '/x/$slug/accuracy/$checkId': {
+      id: '/x/$slug/accuracy/$checkId'
+      path: '/accuracy/$checkId'
+      fullPath: '/x/$slug/accuracy/$checkId'
+      preLoaderRoute: typeof XSlugAccuracyCheckIdRouteImport
+      parentRoute: typeof XSlugRoute
     }
   }
 }
 
-interface DocTypesDocTypeKeyRouteChildren {
-  DocTypesDocTypeKeyPromptsNewRoute: typeof DocTypesDocTypeKeyPromptsNewRoute
-  DocTypesDocTypeKeyPromptsPromptIdEditRoute: typeof DocTypesDocTypeKeyPromptsPromptIdEditRoute
-  DocTypesDocTypeKeyPromptsPromptIdViewRoute: typeof DocTypesDocTypeKeyPromptsPromptIdViewRoute
+interface XSlugRouteChildren {
+  XSlugAnswersRoute: typeof XSlugAnswersRoute
+  XSlugRunsRoute: typeof XSlugRunsRoute
+  XSlugShipRoute: typeof XSlugShipRoute
+  XSlugVersionsRoute: typeof XSlugVersionsRoute
+  XSlugIndexRoute: typeof XSlugIndexRoute
+  XSlugAccuracyCheckIdRoute: typeof XSlugAccuracyCheckIdRoute
+  XSlugAccuracyIndexRoute: typeof XSlugAccuracyIndexRoute
 }
 
-const DocTypesDocTypeKeyRouteChildren: DocTypesDocTypeKeyRouteChildren = {
-  DocTypesDocTypeKeyPromptsNewRoute: DocTypesDocTypeKeyPromptsNewRoute,
-  DocTypesDocTypeKeyPromptsPromptIdEditRoute:
-    DocTypesDocTypeKeyPromptsPromptIdEditRoute,
-  DocTypesDocTypeKeyPromptsPromptIdViewRoute:
-    DocTypesDocTypeKeyPromptsPromptIdViewRoute,
+const XSlugRouteChildren: XSlugRouteChildren = {
+  XSlugAnswersRoute: XSlugAnswersRoute,
+  XSlugRunsRoute: XSlugRunsRoute,
+  XSlugShipRoute: XSlugShipRoute,
+  XSlugVersionsRoute: XSlugVersionsRoute,
+  XSlugIndexRoute: XSlugIndexRoute,
+  XSlugAccuracyCheckIdRoute: XSlugAccuracyCheckIdRoute,
+  XSlugAccuracyIndexRoute: XSlugAccuracyIndexRoute,
 }
 
-const DocTypesDocTypeKeyRouteWithChildren =
-  DocTypesDocTypeKeyRoute._addFileChildren(DocTypesDocTypeKeyRouteChildren)
+const XSlugRouteWithChildren = XSlugRoute._addFileChildren(XSlugRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DocTypesDocTypeKeyRoute: DocTypesDocTypeKeyRouteWithChildren,
-  DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
+  SetupRoute: SetupRoute,
+  XSlugRoute: XSlugRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

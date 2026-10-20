@@ -8,12 +8,20 @@
  * @module
  */
 
-import type * as docTypes from "../docTypes.js";
+import type * as api_ from "../api.js";
+import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
-import type * as prompts from "../prompts.js";
-import type * as runExecution from "../runExecution.js";
+import type * as endpoint from "../endpoint.js";
+import type * as evals from "../evals.js";
+import type * as execution from "../execution.js";
+import type * as extractors from "../extractors.js";
+import type * as helpers from "../helpers.js";
+import type * as http from "../http.js";
+import type * as modelCatalog from "../modelCatalog.js";
+import type * as models from "../models.js";
+import type * as review from "../review.js";
 import type * as runs from "../runs.js";
-import type * as schemaSupport from "../schemaSupport.js";
+import type * as versions from "../versions.js";
 
 import type {
   ApiFromModules,
@@ -22,12 +30,20 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  docTypes: typeof docTypes;
+  api: typeof api_;
+  crons: typeof crons;
   documents: typeof documents;
-  prompts: typeof prompts;
-  runExecution: typeof runExecution;
+  endpoint: typeof endpoint;
+  evals: typeof evals;
+  execution: typeof execution;
+  extractors: typeof extractors;
+  helpers: typeof helpers;
+  http: typeof http;
+  modelCatalog: typeof modelCatalog;
+  models: typeof models;
+  review: typeof review;
   runs: typeof runs;
-  schemaSupport: typeof schemaSupport;
+  versions: typeof versions;
 }>;
 
 /**

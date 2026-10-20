@@ -12,3 +12,10 @@ dist-ssr
 .wrangler
 .output
 .vinxi
+.backups/
+
+# Local-only: agent skills and internal notes
+.agents/
+skills-lock.json
+docs/
+.claude/

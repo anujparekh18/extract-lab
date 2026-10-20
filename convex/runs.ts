@@ -1,300 +1,254 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { api } from "./_generated/api";
-import { hasSchemaVersion } from "../src/extraction/schema-registry";
-import { GOOGLE_PROVIDER, isSupportedGoogleModel } from "../src/extraction/models";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import { fail, isActive, requireDocument, savePromptVersion, saveSchemaVersion, schemaFields } from "./helpers";
+import { parseModelId } from "../src/lib/models";
+import { compareOutputs } from "../src/lib/compare";
+import type { Field } from "../src/lib/fields";
 
-function getDeleteState(status: "queued" | "running" | "success" | "failed") {
-  const inProgress = status === "queued" || status === "running";
-  return {
-    canDelete: !inProgress,
-    deletionDisabledReason: inProgress ? "Wait for this run to finish before deleting." : null,
-  };
+export async function queueRun(
+  ctx: MutationCtx,
+  args: {
+    document: Doc<"documents">;
+    promptVersionId: Id<"promptVersions">;
+    schemaVersionId: Id<"schemaVersions">;
+    model: string;
+    source: Doc<"runs">["source"];
+    evalId?: Id<"evals">;
+    release?: number;
+    idempotencyKey?: string;
+    delayMs?: number;
+  },
+) {
+  if (!parseModelId(args.model)) fail(`Unknown model "${args.model}".`);
+  const runId = await ctx.db.insert("runs", {
+    extractorId: args.document.extractorId,
+    documentId: args.document._id,
+    promptVersionId: args.promptVersionId,
+    schemaVersionId: args.schemaVersionId,
+    model: args.model,
+    source: args.source,
+    evalId: args.evalId,
+    release: args.release,
+    idempotencyKey: args.idempotencyKey,
+    status: "queued",
+    createdAt: Date.now(),
+  });
+  await ctx.scheduler.runAfter(args.delayMs ?? 0, internal.execution.run, { runId });
+  return runId;
 }
 
-export const listByDocument = query({
+/** Runs a prompt and schema on one document, from the playground or a coding agent. Unchanged prompt/schema reuse their existing version. */
+export const start = mutation({
   args: {
     documentId: v.id("documents"),
-  },
-  handler: async (ctx, args) => {
-    const runs = await ctx.db
-      .query("runs")
-      .withIndex("by_document", (q) => q.eq("documentId", args.documentId))
-      .collect();
-
-    return runs.sort((a, b) => b.createdAt - a.createdAt);
-  },
-});
-
-export const listByDocumentPage = query({
-  args: {
-    documentId: v.id("documents"),
-    page: v.optional(v.number()),
-    pageSize: v.optional(v.number()),
-    sort: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-  },
-  handler: async (ctx, args) => {
-    const pageSize = Math.max(1, Math.min(args.pageSize ?? 20, 100));
-    const requestedPage = Math.max(1, Math.floor(args.page ?? 1));
-    const sort = args.sort ?? "desc";
-
-    const runs = await ctx.db
-      .query("runs")
-      .withIndex("by_document", (q) => q.eq("documentId", args.documentId))
-      .collect();
-
-    const sorted = runs.sort((a, b) => {
-      if (sort === "asc") return a.createdAt - b.createdAt;
-      return b.createdAt - a.createdAt;
-    });
-
-    const total = sorted.length;
-    const pageCount = Math.max(1, Math.ceil(total / pageSize));
-    const page = Math.min(requestedPage, pageCount);
-    const start = (page - 1) * pageSize;
-    const pageRuns = sorted.slice(start, start + pageSize);
-    const items = await Promise.all(
-      pageRuns.map(async (run) => {
-        const prompt = await ctx.db.get(run.promptId);
-        return {
-          ...run,
-          promptName: prompt?.name ?? "Prompt deleted",
-          ...getDeleteState(run.status),
-        };
-      }),
-    );
-
-    return {
-      items,
-      total,
-      page,
-      pageSize,
-      pageCount,
-      hasPrevPage: page > 1,
-      hasNextPage: page < pageCount,
-      sort,
-    };
-  },
-});
-
-export const listInProgress = query({
-  args: {},
-  handler: async (ctx) => {
-    const queuedRuns = await ctx.db
-      .query("runs")
-      .withIndex("by_status", (q) => q.eq("status", "queued"))
-      .collect();
-    const runningRuns = await ctx.db
-      .query("runs")
-      .withIndex("by_status", (q) => q.eq("status", "running"))
-      .collect();
-    const runs = [...queuedRuns, ...runningRuns];
-
-    const enriched = await Promise.all(
-      runs.map(async (run) => {
-        const document = await ctx.db.get(run.documentId);
-        return {
-          ...run,
-          documentFileName: document?.title ?? document?.fileName ?? "Unknown document",
-        };
-      }),
-    );
-
-    return enriched.sort((a, b) => b.createdAt - a.createdAt);
-  },
-});
-
-export const getRunForExecution = query({
-  args: {
-    runId: v.id("runs"),
-  },
-  handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId);
-    if (!run) return null;
-
-    const document = await ctx.db.get(run.documentId);
-    if (!document) return null;
-
-    return {
-      run,
-      document,
-    };
-  },
-});
-
-export const createAndQueue = mutation({
-  args: {
-    documentId: v.id("documents"),
-    promptId: v.id("prompts"),
-    schemaVersion: v.string(),
-    provider: v.literal(GOOGLE_PROVIDER),
+    prompt: v.string(),
+    fields: v.any(),
     model: v.string(),
+    /** "agent" for runs started through the MCP server. */
+    source: v.optional(v.union(v.literal("playground"), v.literal("agent"))),
   },
   handler: async (ctx, args) => {
-    const document = await ctx.db.get(args.documentId);
-    if (!document) {
-      throw new Error("Document not found.");
-    }
-
-    const sourceType = document.sourceType ?? "file";
-    if (sourceType === "file" && (!document.storageId || !document.mimeType)) {
-      throw new Error("Document file is missing.");
-    }
-    if (sourceType === "text" && !document.textContent?.trim()) {
-      throw new Error("Document text is missing.");
-    }
-
-    const prompt = await ctx.db.get(args.promptId);
-    if (!prompt) {
-      throw new Error("Prompt not found.");
-    }
-
-    if (prompt.docTypeKey !== document.docTypeKey) {
-      throw new Error("Prompt and document doc type do not match.");
-    }
-
-    if (!hasSchemaVersion(document.docTypeKey, args.schemaVersion)) {
-      throw new Error(
-        `Schema support missing in code registry for ${document.docTypeKey}:${args.schemaVersion}.`,
-      );
-    }
-
-    const queuedRun = await ctx.db
-      .query("runs")
-      .withIndex("by_status", (q) => q.eq("status", "queued"))
-      .first();
-    const runningRun = await ctx.db
-      .query("runs")
-      .withIndex("by_status", (q) => q.eq("status", "running"))
-      .first();
-
-    if (queuedRun || runningRun) {
-      throw new Error("An extraction is already in progress. Only one extraction can run at a time.");
-    }
-
-    const model = args.model.trim();
-
-    if (!model) {
-      throw new Error("Model is required.");
-    }
-
-    if (!isSupportedGoogleModel(model)) {
-      throw new Error(`Unsupported Google model '${model}'. Add it to src/extraction/models.ts first.`);
-    }
-
-    const now = Date.now();
-
-    const runId = await ctx.db.insert("runs", {
-      documentId: args.documentId,
-      docTypeKey: document.docTypeKey,
-      promptId: args.promptId,
-      promptSnapshot: prompt.text,
-      schemaSnapshot: {
-        docTypeKey: document.docTypeKey,
-        schemaVersion: args.schemaVersion,
-      },
-      modelSnapshot: {
-        provider: args.provider,
-        model,
-      },
-      status: "queued",
-      createdAt: now,
-      updatedAt: now,
+    const document = await requireDocument(ctx, args.documentId);
+    const promptVersionId = await savePromptVersion(ctx, document.extractorId, args.prompt);
+    const schemaVersionId = await saveSchemaVersion(ctx, document.extractorId, args.fields as Field[]);
+    const runId = await queueRun(ctx, {
+      document,
+      promptVersionId,
+      schemaVersionId,
+      model: args.model,
+      source: args.source ?? "playground",
     });
-
-    await ctx.scheduler.runAfter(0, api.runExecution.execute, { runId });
-
+    await ctx.db.patch(document.extractorId, { defaultModel: args.model, updatedAt: Date.now() });
     return runId;
   },
 });
 
-export const markRunning = mutation({
-  args: {
-    runId: v.id("runs"),
-    startedAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId);
-    if (!run) return;
+export const listByDocument = query({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, { documentId }) => {
+    const document = await ctx.db.get(documentId);
+    if (!document) return [];
+    const runs = await ctx.db
+      .query("runs")
+      .withIndex("by_document", (q) => q.eq("documentId", documentId))
+      .order("desc")
+      .take(50);
 
-    await ctx.db.patch(args.runId, {
-      status: "running",
-      startedAt: args.startedAt,
-      updatedAt: args.startedAt,
-    });
+    const promptVersions = new Map<string, number>();
+    const schemaCache = new Map<string, Doc<"schemaVersions"> | null>();
+    return await Promise.all(
+      runs.map(async (run) => {
+        if (!promptVersions.has(run.promptVersionId)) {
+          promptVersions.set(run.promptVersionId, (await ctx.db.get(run.promptVersionId))?.version ?? 0);
+        }
+        if (!schemaCache.has(run.schemaVersionId)) {
+          schemaCache.set(run.schemaVersionId, await ctx.db.get(run.schemaVersionId));
+        }
+        const schema = schemaCache.get(run.schemaVersionId);
+        const score =
+          document.expected !== undefined && run.status === "success" && schema
+            ? compareOutputs(schemaFields(schema), document.expected, run.output, document.expectedNotSure)
+            : null;
+        return {
+          ...run,
+          promptVersion: promptVersions.get(run.promptVersionId) ?? 0,
+          schemaVersion: schema?.version ?? 0,
+          score: score ? { accuracy: score.accuracy, matched: score.matched, total: score.total } : null,
+        };
+      }),
+    );
   },
 });
 
-export const finalizeSuccess = mutation({
-  args: {
-    runId: v.id("runs"),
-    finishedAt: v.number(),
-    parsedOutput: v.any(),
-    inputTokens: v.optional(v.number()),
-    outputTokens: v.optional(v.number()),
-    totalTokens: v.optional(v.number()),
-    estimatedCostUsd: v.optional(v.number()),
-    latencyMs: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.runId, {
-      status: "success",
-      parsedOutput: args.parsedOutput,
-      inputTokens: args.inputTokens,
-      outputTokens: args.outputTokens,
-      totalTokens: args.totalTokens,
-      estimatedCostUsd: args.estimatedCostUsd,
-      latencyMs: args.latencyMs,
-      finishedAt: args.finishedAt,
-      updatedAt: args.finishedAt,
-      errorMessage: undefined,
-      validationErrors: undefined,
+/** How many runs the Runs tab loads at once. */
+const RUN_HISTORY_LIMIT = 300;
+
+/**
+ * Every run of an extractor (or of one document), newest first, for the Runs tab: what ran,
+ * with which versions, and how it scores against the document's current correct answer.
+ */
+export const listByExtractor = query({
+  args: { extractorId: v.id("extractors"), documentId: v.optional(v.id("documents")) },
+  handler: async (ctx, { extractorId, documentId }) => {
+    const runs = documentId
+      ? await ctx.db
+          .query("runs")
+          .withIndex("by_document", (q) => q.eq("documentId", documentId))
+          .order("desc")
+          .take(RUN_HISTORY_LIMIT)
+      : await ctx.db
+          .query("runs")
+          .withIndex("by_extractor", (q) => q.eq("extractorId", extractorId))
+          .order("desc")
+          .take(RUN_HISTORY_LIMIT);
+
+    const documents = new Map<string, Doc<"documents"> | null>();
+    const prompts = new Map<string, number>();
+    const schemas = new Map<string, Doc<"schemaVersions"> | null>();
+    for (const run of runs) {
+      if (!documents.has(run.documentId)) documents.set(run.documentId, await ctx.db.get(run.documentId));
+      if (!prompts.has(run.promptVersionId)) prompts.set(run.promptVersionId, (await ctx.db.get(run.promptVersionId))?.version ?? 0);
+      if (!schemas.has(run.schemaVersionId)) schemas.set(run.schemaVersionId, await ctx.db.get(run.schemaVersionId));
+    }
+    const rows = runs.map((run) => {
+      const document = documents.get(run.documentId);
+      const schema = schemas.get(run.schemaVersionId);
+      const score =
+        document?.expected !== undefined && run.status === "success" && schema
+          ? compareOutputs(schemaFields(schema), document.expected, run.output, document.expectedNotSure)
+          : null;
+      return {
+        _id: run._id,
+        documentId: run.documentId,
+        documentTitle: document?.title ?? (run.purgedAt ? "API document (deleted after retention)" : "Deleted document"),
+        model: run.model,
+        source: run.source,
+        evalId: run.evalId,
+        status: run.status,
+        error: run.error,
+        costUsd: run.costUsd ?? 0,
+        latencyMs: run.latencyMs,
+        createdAt: run.createdAt,
+        release: run.release,
+        purged: Boolean(run.purgedAt),
+        promptVersion: prompts.get(run.promptVersionId) ?? 0,
+        schemaVersion: schema?.version ?? 0,
+        score: score
+          ? {
+              matched: score.matched,
+              total: score.total,
+              importantMatched: score.importantMatched,
+              importantTotal: score.importantTotal,
+            }
+          : null,
+      };
     });
+    return { rows, limited: runs.length === RUN_HISTORY_LIMIT };
   },
 });
 
-export const finalizeFailure = mutation({
-  args: {
-    runId: v.id("runs"),
-    finishedAt: v.number(),
-    errorMessage: v.string(),
-    validationErrors: v.optional(v.array(v.string())),
-    inputTokens: v.optional(v.number()),
-    outputTokens: v.optional(v.number()),
-    totalTokens: v.optional(v.number()),
-    estimatedCostUsd: v.optional(v.number()),
-    latencyMs: v.optional(v.number()),
+export const get = query({
+  args: { id: v.id("runs") },
+  handler: async (ctx, { id }) => {
+    const run = await ctx.db.get(id);
+    if (!run) return null;
+    const [prompt, schema] = await Promise.all([ctx.db.get(run.promptVersionId), ctx.db.get(run.schemaVersionId)]);
+    return {
+      ...run,
+      prompt: prompt ? { version: prompt.version, text: prompt.text } : null,
+      schema: schema ? { version: schema.version, fields: schemaFields(schema) } : null,
+    };
   },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.runId, {
-      status: "failed",
-      errorMessage: args.errorMessage,
-      validationErrors: args.validationErrors,
-      inputTokens: args.inputTokens,
-      outputTokens: args.outputTokens,
-      totalTokens: args.totalTokens,
-      estimatedCostUsd: args.estimatedCostUsd,
-      latencyMs: args.latencyMs,
-      finishedAt: args.finishedAt,
-      updatedAt: args.finishedAt,
-    });
+});
+
+export const activeCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const [queued, running] = await Promise.all([
+      ctx.db.query("runs").withIndex("by_status", (q) => q.eq("status", "queued")).collect(),
+      ctx.db.query("runs").withIndex("by_status", (q) => q.eq("status", "running")).collect(),
+    ]);
+    return queued.length + running.length;
   },
 });
 
 export const remove = mutation({
-  args: {
-    id: v.id("runs"),
-  },
-  handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.id);
-    if (!run) {
-      throw new Error("Run not found.");
-    }
-
-    if (run.status === "queued" || run.status === "running") {
-      throw new Error("Cannot delete a run that is in progress.");
-    }
-
-    await ctx.db.delete(args.id);
+  args: { id: v.id("runs") },
+  handler: async (ctx, { id }) => {
+    const run = await ctx.db.get(id);
+    if (!run) return;
+    if (isActive(run.status)) fail("Wait for this run to finish.");
+    await ctx.db.delete(id);
   },
 });
+
+// ---------------------------------------------------------------------------
+// Internal: used by the execution action
+// ---------------------------------------------------------------------------
+
+export const getForExecution = internalQuery({
+  args: { runId: v.id("runs") },
+  handler: async (ctx, { runId }) => {
+    const run = await ctx.db.get(runId);
+    if (!run) return null;
+    const [document, prompt, schema] = await Promise.all([
+      ctx.db.get(run.documentId),
+      ctx.db.get(run.promptVersionId),
+      ctx.db.get(run.schemaVersionId),
+    ]);
+    if (!document || !prompt || !schema) return null;
+    return { run, document, prompt: prompt.text, fields: schemaFields(schema) };
+  },
+});
+
+export const markRunning = internalMutation({
+  args: { runId: v.id("runs") },
+  handler: async (ctx, { runId }) => {
+    const run = await ctx.db.get(runId);
+    if (!run || run.status !== "queued") return false;
+    await ctx.db.patch(runId, { status: "running", startedAt: Date.now() });
+    return true;
+  },
+});
+
+export const finish = internalMutation({
+  args: {
+    runId: v.id("runs"),
+    status: v.union(v.literal("success"), v.literal("failed")),
+    output: v.optional(v.any()),
+    error: v.optional(v.string()),
+    validationErrors: v.optional(v.array(v.string())),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    costUsd: v.optional(v.number()),
+    latencyMs: v.optional(v.number()),
+  },
+  handler: async (ctx, { runId, ...patch }) => {
+    if (!(await ctx.db.get(runId))) return;
+    await ctx.db.patch(runId, { ...patch, finishedAt: Date.now() });
+  },
+});
+
