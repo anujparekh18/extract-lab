@@ -19,3 +19,6 @@ dist-ssr
 skills-lock.json
 docs/
 .claude/
+
+# Demo video project (Remotion) and its audio/renders
+video/

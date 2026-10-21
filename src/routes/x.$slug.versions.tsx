@@ -418,7 +418,7 @@ function VersionDiff({ a, b }: { a: Version; b: Version }) {
           v{before.version} → v{after.version}:{" "}
           {added || removed ? (
             <>
-              <span className="text-ok">{added} lines added</span>, <span className="text-bad">{removed} removed</span>.
+              <span className="text-ok">{added} {added === 1 ? "line" : "lines"} added</span>, <span className="text-bad">{removed} removed</span>.
             </>
           ) : (
             "identical text."
