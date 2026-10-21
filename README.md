@@ -6,7 +6,7 @@ A [Mirai Gadget Lab](https://www.miraigadgetlab.com) product.
 
 Extract Lab is an open-source workbench for LLM document extraction. You define what you want out of invoices, receipts, resumes, emails, or any other document, try it on real files, save the correct answers for a handful of them, and every prompt, schema, and model change is checked against those answers. When it's good enough, copy typed code into your app or call the built-in HTTP endpoint.
 
-![The playground: a sample invoice PDF, the prompt, and each extracted field next to its correct answer](.github/screenshots/playground.png)
+![Demo: pressing Run on a sample invoice PDF, and every extracted field appearing next to its correct answer](.github/screenshots/demo.gif)
 
 ## Why
 
@@ -28,6 +28,8 @@ Scripts and notebooks answer the first question once. Extract Lab keeps answerin
 5. **Learn from production.** Every document sent to the endpoint shows up in the app. When one goes wrong, add it to the test set, give it a correct answer, and the next check covers it.
 
 Every run stores the prompt version, schema version, and model it used, so history stays accurate as things change.
+
+![The playground: a sample invoice PDF, the prompt, and each extracted field next to its correct answer](.github/screenshots/playground.png)
 
 ![Accuracy checks comparing two Gemini models on the same prompt and schema, with important fields scored separately and cost per document](.github/screenshots/accuracy.png)
 
